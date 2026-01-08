@@ -1,185 +1,137 @@
-# 🎯 Macro Regime Detection Tool
+# Macro Regime Detection Tool
 
-**Outil de détection de régimes macroéconomiques avec comparaison K-Means vs HMM**
+A quantitative tool for detecting macroeconomic regimes using **K-Means Clustering** and **Hidden Markov Models (HMM)**, with tactical asset allocation recommendations.
 
-## 📋 Description
+## Overview
 
-Cet outil identifie les régimes macroéconomiques (Expansion, Récession, etc.) à partir de données réelles et recommande une allocation d'actifs optimale entre Actions et Obligations.
+This project implements a regime detection system that:
+- Identifies macroeconomic regimes (Equities, Fixed Income, Balanced, Cash) using rolling window estimation
+- Compares two methodologies: K-Means vs HMM
+- Provides tactical allocation recommendations based on detected regimes
+- Includes a professional interactive dashboard built with Streamlit
+- Ensures **no look-ahead bias** through proper data handling
 
-### Caractéristiques :
-- ✅ **Pas de look-ahead bias** : Estimation sur fenêtre glissante uniquement
-- ✅ **Deux méthodes comparées** : K-Means Clustering vs Hidden Markov Model
-- ✅ **Données réelles** : FRED (macro) + Yahoo Finance (actifs)
-- ✅ **Dashboard interactif** : Visualisation des résultats
-- ✅ **Backtest complet** : Performance historique de la stratégie
+## Quick Start
 
----
+### 1. Download the project
+- Click the green **"Code"** button above
+- Select **"Download ZIP"**
+- Unzip the folder
 
-## 🚀 Installation Rapide
+### 2. Open a terminal in the project folder
+- **Mac**: Right-click on folder → "New Terminal at Folder"
+- **Windows**: Open folder, type `cmd` in the address bar
 
-### Prérequis
-- Python 3.9+ 
-- Une clé API FRED (gratuite) : https://fred.stlouisfed.org/docs/api/api_key.html
-
-### Étapes
-
+### 3. Install dependencies
 ```bash
-# 1. Créer un dossier et y copier les fichiers
-mkdir macro_regime_tool
-cd macro_regime_tool
-
-# 2. Créer un environnement virtuel (recommandé)
-python -m venv venv
-
-# Sur Windows:
-venv\Scripts\activate
-
-# Sur Mac/Linux:
-source venv/bin/activate
-
-# 3. Installer les dépendances
 pip install -r requirements.txt
+```
 
-# 4. Configurer la clé API FRED
-# Créer un fichier .env avec votre clé :
-echo "FRED_API_KEY=votre_cle_api_ici" > .env
-
-# 5. Lancer l'analyse
-python regime_detector.py
-
-# 6. (Optionnel) Lancer le dashboard Streamlit
+### 4. Launch the dashboard
+```bash
 streamlit run dashboard_streamlit.py
 ```
 
----
+The dashboard will open automatically in your browser at `http://localhost:8501`
 
-## 📁 Structure des Fichiers
+That's it!
+
+## Project Structure
 
 ```
-macro_regime_tool/
-│
-├── regime_detector.py      # Code principal (K-Means + HMM)
-├── dashboard_streamlit.py  # Dashboard interactif (Streamlit)
-├── requirements.txt        # Dépendances Python
-├── .env                    # Votre clé API FRED (à créer)
-├── README.md              # Ce fichier
-│
-└── outputs/               # Résultats générés
-    ├── dashboard_data.json
-    ├── performance_hmm.png
-    ├── performance_kmeans.png
-    └── regime_comparison.png
+macro-regime-detection/
+├── dashboard_streamlit.py   # Interactive Streamlit dashboard
+├── regime_detector.py       # Core detection algorithms
+├── requirements.txt         # Python dependencies
+├── .env                     # API configuration (included)
+└── README.md                # This file
 ```
 
----
+## Methodology
 
-## 📊 Variables Macroéconomiques Utilisées
+### Data Sources
 
-| Variable | Source FRED | Justification Économique |
-|----------|-------------|-------------------------|
-| Chômage (UNRATE) | FRED | Indicateur retardé du cycle |
-| Inflation (CPI) | FRED | Politique monétaire, taux réels |
-| Taux 10 ans (GS10) | FRED | Anticipations croissance/inflation |
-| Taux 2 ans (GS2) | FRED | Anticipations Fed |
-| VIX | FRED | Aversion au risque |
-| Spread BAA | FRED | Stress crédit corporate |
+| Variable | Source | Description |
+|----------|--------|-------------|
+| Unemployment Rate | FRED (UNRATE) | Labor market indicator |
+| CPI | FRED (CPIAUCSL) | Inflation measure |
+| 10Y Treasury | FRED (GS10) | Long-term rates |
+| 2Y Treasury | FRED (GS2) | Short-term rates |
+| VIX | FRED (VIXCLS) | Volatility index |
+| BAA Yield | FRED (BAA) | Credit spread proxy |
+| S&P 500 | Yahoo Finance | Equity benchmark |
+| VBMFX | Yahoo Finance | Bond benchmark |
 
-### Features dérivées :
-- `infl_mom` : Momentum d'inflation (variation log CPI)
-- `2s10s_spread` : Pente de courbe (10Y - 2Y)
-- `ust10y_d`, `ust2y_d` : Variations mensuelles des taux
+### Features
 
----
+Derived features used in regime detection:
+- `unemploy`: Unemployment rate level
+- `infl_mom`: Inflation momentum (log CPI change)
+- `ust10y_d`: 10Y yield monthly change
+- `ust2y_d`: 2Y yield monthly change
+- `2s10s_spread`: Yield curve slope (10Y - 2Y)
+- `vix`: Volatility level
+- `baa_yield`: Corporate yield level
 
-## 🎯 Régimes et Allocations
+### Regime Classification
 
-| Régime | Condition | Allocation |
+| Regime | Condition | Allocation |
 |--------|-----------|------------|
-| **Equities** | Actions performantes, bonds faibles | 100% Actions |
-| **Rates** | Bonds performants, actions faibles | 100% Obligations |
-| **Both** | Les deux classes performantes | 60% Actions / 40% Bonds |
-| **None** | Les deux faibles | 100% Cash |
+| **Equities** | Stocks outperform | 100% Equities |
+| **Fixed Income** | Bonds outperform | 100% Bonds |
+| **Balanced** | Both perform well | 60% Equities / 40% Bonds |
+| **Cash** | Both underperform | 100% Cash |
 
----
+### Anti-Look-Ahead Measures
 
-## 🔬 Méthodologie
+1. **Feature lag**: All features shifted by 1 month
+2. **Rolling estimation**: Model trained on [t-window, t-1] only
+3. **Out-of-sample prediction**: Regime at t uses only prior data
+4. **Confirmation rule**: N consecutive months required before regime change
 
-### K-Means Clustering
-- Partitionne les observations en K clusters
-- Minimise la variance intra-cluster
-- **Avantage** : Simple, interprétable
-- **Limite** : Pas de structure temporelle
+## Dashboard Features
 
-### Hidden Markov Model (HMM)
-- États cachés évoluant selon une chaîne de Markov
-- Distributions d'émission gaussiennes
-- **Avantage** : Capture la persistance des régimes
-- **Limite** : Plus complexe, peut être instable
+The interactive dashboard allows you to:
 
-### Contraintes anti-look-ahead :
-1. Features shiftées de 1 mois (X_t utilise info jusqu'à t-1)
-2. Entraînement sur fenêtre [t-window, t-1] uniquement
-3. Prédiction à t via posterior sur [t-window, t]
-4. Règle de confirmation de 2 mois avant changement
+- **Adjust model parameters** in real-time:
+  - Rolling window length (10-25 years)
+  - Number of regimes (3-8)
+  - Feature selection
+  - Confirmation period
 
----
+- **Compare methodologies**:
+  - HMM vs K-Means regime detection
+  - Stability analysis (regime switches count)
+  - Agreement rate between methods
 
-## 📈 Résultats Attendus
+- **Analyze performance**:
+  - Cumulative returns (log scale)
+  - Risk metrics (CAGR, Sharpe, Max Drawdown)
+  - Performance by regime
 
-Après exécution, vous obtiendrez :
+## Model Comparison
 
-1. **Statistiques de performance** :
-   - CAGR, Volatilité, Sharpe, Max Drawdown
-   - Comparaison Stratégie vs Buy&Hold vs 60/40
+| Aspect | K-Means | HMM |
+|--------|---------|-----|
+| Temporal dynamics | None | Markov transitions |
+| Interpretability | High | Moderate |
+| Stability | Lower | Higher |
+| Probability outputs | No | Yes |
+| Computational cost | Low | Higher |
 
-2. **Régime actuel** :
-   - Détection du régime en cours
-   - Allocation recommandée
+## Requirements
 
-3. **Visualisations** :
-   - Courbes de performance cumulée
-   - Timeline des régimes
-   - Performance par régime
+- Python 3.9+
+- See `requirements.txt` for full dependencies
 
----
+## Limitations
 
-## ⚠️ Limitations et Avertissements
+1. **Detection lag**: Regime changes detected with delay
+2. **Data revisions**: Macro data subject to revisions
+3. **Past ≠ Future**: Historical performance not indicative of future results
+4. **Educational purpose**: Not investment advice
 
-1. **Retard de détection** : Les changements de régime sont détectés avec retard
-2. **Données révisées** : Les données macro sont souvent révisées après publication
-3. **Passé ≠ Futur** : La performance passée ne garantit pas les résultats futurs
-4. **Cet outil est éducatif** : Ne constitue pas un conseil en investissement
+## References
 
----
-
-## 🔧 Personnalisation
-
-### Modifier le nombre de régimes
-```python
-# Dans regime_detector.py
-config = Config()
-config.N_STATES_HMM = 5      # HMM: 5 états
-config.N_CLUSTERS_KMEANS = 4  # K-Means: 4 clusters
-```
-
-### Modifier la fenêtre rolling
-```python
-config.WINDOW_YEARS = 20  # 20 ans de données pour l'entraînement
-```
-
-### Modifier la règle de confirmation
-```python
-config.PERSISTENCE = 2  # 2 mois de confirmation avant changement
-```
-
----
-
-## 📞 Support
-
-Pour toute question sur le code ou la méthodologie, consultez les commentaires détaillés dans `regime_detector.py`.
-
----
-
-## 📜 Licence
-
-Usage personnel et éducatif uniquement.
+- Hamilton, J.D. (1989). "A New Approach to the Economic Analysis of Nonstationary Time Series"
+- Ang, A. & Bekaert, G. (2002). "Regime Switches in Interest Rates"
